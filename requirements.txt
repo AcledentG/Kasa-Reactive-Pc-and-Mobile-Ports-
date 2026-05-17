@@ -1,0 +1,15 @@
+# Desktop development requirements for the lean mobile version.
+# Note: the actual Android APK requirements are in buildozer.spec.
+
+# Core
+kivy>=2.3.0
+
+# Desktop audio capture (Android uses mic instead)
+soundcard>=0.4.3
+
+# Hardware access (does nothing on desktop)
+plyer>=2.1.0
+
+# That's it! No numpy, no python-kasa, no aiohttp.
+# The FFT is hand-rolled in pure Python.
+# The Kasa protocol is implemented directly over a socket.
