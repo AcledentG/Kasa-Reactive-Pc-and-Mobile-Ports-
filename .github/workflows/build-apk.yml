@@ -1,0 +1,82 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build APK with Buildozer
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Remove Python 3.13+ from the runner
+        run: |
+          sudo rm -rf /opt/hostedtoolcache/Python/3.13.* || true
+          sudo rm -rf /opt/hostedtoolcache/Python/3.14.* || true
+          PY312=$(which python3.12)
+          sudo ln -sf "$PY312" /usr/local/bin/python
+          sudo ln -sf "$PY312" /usr/local/bin/python3
+          echo "Python now resolves to: $(which python)"
+          python --version
+
+      - name: Cache Buildozer global directory
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.buildozer
+            .buildozer
+          key: buildozer-lean-v1-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
+          restore-keys: |
+            buildozer-lean-v1-${{ runner.os }}-
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            git zip unzip openjdk-17-jdk python3-pip autoconf libtool \
+            pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev \
+            libtinfo5 cmake libffi-dev libssl-dev \
+            build-essential ccache
+
+      - name: Install Buildozer and Cython
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade buildozer
+          python -m pip install --upgrade "cython>=3.0.12,<3.1"
+
+      - name: Clear stale build artifacts
+        run: |
+          rm -rf .buildozer
+          rm -rf ~/.buildozer/android/platform/build-*
+
+      - name: Build the APK
+        env:
+          PYTHON: python3.12
+          P4A_PYTHON: python3.12
+        run: |
+          buildozer android debug
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kasa-reactive-apk
+          path: bin/*.apk
+          retention-days: 30
